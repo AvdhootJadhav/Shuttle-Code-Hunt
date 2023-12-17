@@ -105,6 +105,79 @@ fn cursed_candy_contest(input: Json<DetailedData>) -> Json<Day4Response> {
     return Json::from(res);
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Day6Response {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    elf: Option<i32>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "elf on a shelf")
+    )]
+    elf_on_a_shelf: Option<i32>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename(serialize = "shelf with no elf on it")
+    )]
+    shelf_with_no_elf_on_it: Option<i32>,
+}
+
+#[post("/6", data = "<data>")]
+fn never_count_on_an_elf(data: String) -> Json<Day6Response> {
+    let elf_data: Vec<_> = data.split_inclusive("elf").collect();
+    let mut elf_count: Option<i32> = None;
+
+    let elf_on_shelf: Vec<_> = data.split_inclusive("elf on a shelf").collect();
+    let mut elf_shelf_count: Option<i32> = None;
+
+    let shelf_count: i32 = data
+        .split(" ")
+        .filter(|a: &&str| a == &"shelf")
+        .count()
+        .try_into()
+        .unwrap();
+
+    for item in elf_data {
+        let pos = item.find("elf");
+
+        if pos.is_some() {
+            if let Some(count) = elf_count {
+                elf_count = Some(count + 1);
+            } else {
+                elf_count = Some(1);
+            }
+        }
+    }
+
+    for item in elf_on_shelf {
+        let pos = item.find("elf on a shelf");
+
+        if pos.is_some() {
+            if let Some(count) = elf_shelf_count {
+                elf_shelf_count = Some(count + 1);
+            } else {
+                elf_shelf_count = Some(1);
+            }
+        }
+    }
+
+    let mut elf_before_shelf: Option<i32> = None;
+
+    if elf_shelf_count.is_none() {
+        elf_before_shelf = None;
+    } else {
+        elf_before_shelf = Some((shelf_count - elf_shelf_count.unwrap()).try_into().unwrap());
+    }
+
+    let res = Day6Response {
+        elf: elf_count,
+        elf_on_a_shelf: elf_shelf_count,
+        shelf_with_no_elf_on_it: elf_before_shelf,
+    };
+
+    return Json::from(res);
+}
+
 #[get("/1/<path..>")]
 fn cube_the_bits(path: PathBuf) -> String {
     let mut calculated_value = -1;
@@ -129,7 +202,8 @@ async fn main() -> shuttle_rocket::ShuttleRocket {
             index,
             cube_the_bits,
             calculate_strength,
-            cursed_candy_contest
+            cursed_candy_contest,
+            never_count_on_an_elf
         ],
     );
 
