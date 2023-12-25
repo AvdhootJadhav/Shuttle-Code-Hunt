@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::path::PathBuf;
 
-use rocket::data::FromData;
 use rocket::{
-    get, post, routes,
-    serde::{self, json::Json, Deserialize},
+    get, post, response, routes,
+    serde::{self, json::Json, Deserialize, Serialize},
 };
 
 #[get("/")]
@@ -194,6 +193,61 @@ fn cube_the_bits(path: PathBuf) -> String {
     i32::pow(calculated_value, 3).to_string()
 }
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+#[serde(untagged)]
+enum Day5Response {
+    First(Vec<String>),
+    Second(Vec<Vec<String>>),
+}
+
+#[post("/5?<offset>&<limit>&<split>", data = "<data>")]
+fn slicing_the_loop(
+    offset: Option<usize>,
+    limit: Option<usize>,
+    split: Option<usize>,
+    data: Json<Vec<String>>,
+) -> Json<Day5Response> {
+    let Json(data) = data;
+
+    let mut response: Vec<String> = Vec::new();
+
+    let mut start = offset;
+    let mut end = limit;
+
+    if limit.is_none() {
+        end = Some(data.len());
+    }
+
+    if offset.is_none() {
+        start = Some(0);
+    }
+
+    for (i, item) in data.iter().enumerate() {
+        if i >= start.unwrap() && i < start.unwrap() + end.unwrap() {
+            response.push(item.to_string());
+        }
+    }
+
+    if split.is_some() {
+        let mut res: Vec<Vec<String>> = Vec::new();
+        let n = response.len();
+        for i in (0..n).step_by(split.unwrap()) {
+            let tmp = response
+                .iter()
+                .skip(i)
+                .take(split.unwrap())
+                .cloned()
+                .collect();
+
+            res.push(tmp);
+        }
+        return Json(Day5Response::Second(res));
+    }
+
+    return Json(Day5Response::First(response));
+}
+
 #[shuttle_runtime::main]
 async fn main() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build().mount(
@@ -203,7 +257,8 @@ async fn main() -> shuttle_rocket::ShuttleRocket {
             cube_the_bits,
             calculate_strength,
             cursed_candy_contest,
-            never_count_on_an_elf
+            never_count_on_an_elf,
+            slicing_the_loop
         ],
     );
 
